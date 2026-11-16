@@ -1,0 +1,245 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lunch League</title>
+  <meta name="description" content="Lunch League — compete, build teams, and climb the rankings.">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #101114;
+      color: #f5f5f5;
+      font-family: Arial, sans-serif;
+    }
+    header {
+      padding: 22px 8%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #292a30;
+    }
+    .logo { font-size: 23px; font-weight: 800; }
+    .logo span { color: #b5f36b; }
+    .hero {
+      max-width: 850px;
+      margin: 100px auto 65px;
+      padding: 0 24px;
+      text-align: center;
+    }
+    .tag {
+      color: #b5f36b;
+      letter-spacing: 3px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    h1 { font-size: clamp(42px, 8vw, 76px); margin: 20px 0; }
+    h1 span { color: #b5f36b; }
+    .intro { color: #aaa; font-size: 18px; line-height: 1.6; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 13px 20px;
+      background: #b5f36b;
+      color: #111;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #292a30;
+      color: white;
+    }
+    .panel {
+      max-width: 430px;
+      margin: 35px auto;
+      padding: 25px;
+      background: #1b1c21;
+      border: 1px solid #303139;
+      border-radius: 14px;
+      text-align: left;
+    }
+    input {
+      display: block;
+      width: 100%;
+      margin: 10px 0 16px;
+      padding: 13px;
+      border: 1px solid #41424a;
+      border-radius: 7px;
+      background: #101114;
+      color: white;
+    }
+    label { color: #bbb; font-size: 14px; }
+    .message { color: #b5f36b; min-height: 22px; }
+    .muted { color: #999; line-height: 1.5; }
+    .hidden { display: none; }
+    footer {
+      text-align: center;
+      padding: 35px;
+      color: #777;
+      border-top: 1px solid #292a30;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">LUNCH <span>LEAGUE</span></div>
+    <button id="loginButton">Player Login</button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="tag">THE COMPETITION STARTS HERE</div>
+      <h1>YOUR LUNCH.<br><span>YOUR LEAGUE.</span></h1>
+      <p class="intro">
+        Compete with your league, build teams, climb the rankings,
+        and become the champion.
+      </p>
+      <button id="joinButton">Player Login / Sign Up</button>
+    </section>
+
+    <section id="accountPanel" class="panel hidden">
+      <h2 id="formTitle">Player Login</h2>
+      <div id="signupFields" class="hidden">
+        <label for="playerName">Player name</label>
+        <input id="playerName" placeholder="Your display name">
+      </div>
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="Your email">
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="Your password">
+      <button id="submitButton">Log In</button>
+      <button id="switchButton" class="secondary">Create an account</button>
+      <p id="message" class="message"></p>
+      <p class="muted">Only approved league players can access league features.</p>
+    </section>
+
+    <section id="playerPanel" class="panel hidden">
+      <h2 id="welcome">Welcome!</h2>
+      <p id="playerStatus" class="muted"></p>
+      <button id="logoutButton" class="secondary">Log Out</button>
+    </section>
+  </main>
+
+  <footer>© 2026 Lunch League</footer>
+
+  <script>
+    // ADD YOUR SUPABASE DETAILS BETWEEN THE QUOTES
+    const SUPABASE_URL = "PASTE_YOUR_PROJECT_URL_HERE";
+    const SUPABASE_KEY = "PASTE_YOUR_PUBLISHABLE_KEY_HERE";
+
+    const db = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+    const accountPanel = document.getElementById("accountPanel");
+    const playerPanel = document.getElementById("playerPanel");
+    const signupFields = document.getElementById("signupFields");
+    const message = document.getElementById("message");
+
+    let isSignup = false;
+
+    function showLogin() {
+      accountPanel.classList.remove("hidden");
+      playerPanel.classList.add("hidden");
+      accountPanel.scrollIntoView({ behavior: "smooth" });
+    }
+
+    document.getElementById("loginButton").onclick = showLogin;
+    document.getElementById("joinButton").onclick = showLogin;
+
+    document.getElementById("switchButton").onclick = () => {
+      isSignup = !isSignup;
+      signupFields.classList.toggle("hidden", !isSignup);
+      document.getElementById("formTitle").textContent =
+        isSignup ? "Create Player Account" : "Player Login";
+      document.getElementById("submitButton").textContent =
+        isSignup ? "Sign Up" : "Log In";
+      document.getElementById("switchButton").textContent =
+        isSignup ? "Back to Login" : "Create an account";
+      message.textContent = "";
+    };
+
+    document.getElementById("submitButton").onclick = async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+      const name = document.getElementById("playerName").value.trim();
+
+      message.textContent = "Please wait...";
+
+      if (!email || !password || (isSignup && !name)) {
+        message.textContent = "Please fill in all required fields.";
+        return;
+      }
+
+      let result;
+
+      if (isSignup) {
+        result = await db.auth.signUp({
+          email,
+          password,
+          options: { data: { display_name: name } }
+        });
+      } else {
+        result = await db.auth.signInWithPassword({ email, password });
+      }
+
+      if (result.error) {
+        message.textContent = result.error.message;
+        return;
+      }
+
+      if (isSignup) {
+        message.textContent =
+          "Account created. Check your email if confirmation is required.";
+        return;
+      }
+
+      await showPlayer();
+    };
+
+    async function showPlayer() {
+      const { data: { user } } = await db.auth.getUser();
+
+      if (!user) return;
+
+      const { data, error } = await db
+        .from("profiles")
+        .select("display_name, approved")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      accountPanel.classList.add("hidden");
+      playerPanel.classList.remove("hidden");
+
+      if (error || !data) {
+        document.getElementById("welcome").textContent = "Account signed in";
+        document.getElementById("playerStatus").textContent =
+          "Your player profile is not available yet. Please contact the league administrator.";
+        return;
+      }
+
+      document.getElementById("welcome").textContent =
+        "Welcome, " + data.display_name + "!";
+
+      document.getElementById("playerStatus").textContent =
+        data.approved
+          ? "Your account is approved. League features will appear here as they are connected."
+          : "Your account is waiting for league administrator approval.";
+    }
+
+    document.getElementById("logoutButton").onclick = async () => {
+      await db.auth.signOut();
+      playerPanel.classList.add("hidden");
+      showLogin();
+    };
+
+    db.auth.getSession().then(({ data }) => {
+      if (data.session) showPlayer();
+    });
+  </script>
+</body>
+</html>
